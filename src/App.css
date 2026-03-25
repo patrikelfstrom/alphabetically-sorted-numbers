@@ -193,9 +193,21 @@
   height: 100%;
 }
 
-.plot-canvas svg {
-  position: relative;
+.plot-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.plot-layer--base {
   z-index: 1;
+}
+
+.plot-layer--overlay {
+  z-index: 2;
+}
+
+.plot-layer svg {
+  position: relative;
   display: block;
   width: 100%;
   height: 100%;

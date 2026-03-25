@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import * as Plot from '@observablehq/plot'
 import * as d3 from 'd3'
 import './App.css'
@@ -22,6 +22,7 @@ type GridCell = {
 type ChartData = {
   data: NumberPoint[]
   gridCells: GridCell[]
+  pointsByValue: Map<number, NumberPoint>
   xValues: number[]
   xTicks: number[]
   yValues: number[]
@@ -66,8 +67,10 @@ const tens: Record<number, string> = {
 }
 
 const collator = new Intl.Collator('sv-SE')
-const minChartValue = 100
-const maxChartValue = 500
+const minAvailableStart = 0
+const maxAvailableValue = 5000
+const defaultAvailableStart = 0
+const defaultAvailableEnd = 100
 
 function toSwedishNumber(value: number): string {
   if (value < 0) {
@@ -140,9 +143,10 @@ function getTickStep(maxValue: number): number {
   return magnitude * 10
 }
 
-function buildChartData(maxValue: number): ChartData {
-  const xValues = d3.range(0, maxValue + 1)
-  const yValues = d3.range(0, maxValue + 1)
+function buildChartData(rangeStart: number, rangeEnd: number): ChartData {
+  const xValues = d3.range(rangeStart, rangeEnd + 1)
+  const count = xValues.length
+  const yValues = d3.range(0, count)
   const rawData: RawNumberEntry[] = xValues.map(
     (value: number): RawNumberEntry => ({
       name: toSwedishNumber(value),
@@ -160,6 +164,12 @@ function buildChartData(maxValue: number): ChartData {
       value: entry.value,
     }))
 
+  const pointsByValue = new Map<number, NumberPoint>()
+
+  for (const point of data) {
+    pointsByValue.set(point.value, point)
+  }
+
   const gridCells: GridCell[] = d3.cross(
     xValues,
     yValues,
@@ -169,33 +179,60 @@ function buildChartData(maxValue: number): ChartData {
     }),
   )
 
-  const tickStep = getTickStep(maxValue)
-  const xTicks = d3.range(0, maxValue + 1, tickStep)
-  const yTicks = d3.range(0, maxValue + 1, tickStep)
+  const tickStep = getTickStep(Math.max(1, rangeEnd - rangeStart))
+  const xTicks = d3.range(rangeStart, rangeEnd + 1, tickStep)
+  const yTicks = d3.range(0, count, tickStep)
 
-  if (xTicks[xTicks.length - 1] !== maxValue) {
-    xTicks.push(maxValue)
+  if (xTicks[xTicks.length - 1] !== rangeEnd) {
+    xTicks.push(rangeEnd)
   }
 
-  if (yTicks[yTicks.length - 1] !== maxValue) {
-    yTicks.push(maxValue)
+  if (yTicks.length === 0 || yTicks[yTicks.length - 1] !== count - 1) {
+    yTicks.push(count - 1)
   }
 
-  return { data, gridCells, xTicks, xValues, yTicks, yValues }
+  return { data, gridCells, pointsByValue, xTicks, xValues, yTicks, yValues }
 }
 
 function App() {
   const controlsRef = useRef<HTMLElement | null>(null)
-  const plotRef = useRef<HTMLDivElement | null>(null)
-  const [rangeStart, setRangeStart] = useState(0)
-  const [rangeEnd, setRangeEnd] = useState(100)
-  const [chartMax, setChartMax] = useState(minChartValue)
+  const basePlotRef = useRef<HTMLDivElement | null>(null)
+  const overlayPlotRef = useRef<HTMLDivElement | null>(null)
+  const [availableStart, setAvailableStart] = useState(defaultAvailableStart)
+  const [availableEnd, setAvailableEnd] = useState(defaultAvailableEnd)
+  const [visibleStart, setVisibleStart] = useState(defaultAvailableStart)
+  const [visibleEnd, setVisibleEnd] = useState(defaultAvailableEnd)
   const [plotSize, setPlotSize] = useState(720)
 
-  const { data, gridCells, xTicks, xValues, yTicks, yValues } = buildChartData(chartMax)
-  const visibleData = data.filter(
-    (entry) => entry.value >= rangeStart && entry.value <= rangeEnd,
+  const chartData = useMemo(
+    () => buildChartData(availableStart, availableEnd),
+    [availableEnd, availableStart],
   )
+  const deferredVisibleStart = useDeferredValue(visibleStart)
+  const deferredVisibleEnd = useDeferredValue(visibleEnd)
+
+  const visiblePoints = useMemo(() => {
+    const points: NumberPoint[] = []
+
+    for (
+      let value = deferredVisibleStart;
+      value <= deferredVisibleEnd;
+      value += 1
+    ) {
+      const point = chartData.pointsByValue.get(value)
+
+      if (point) {
+        points.push(point)
+      }
+    }
+
+    return points
+  }, [chartData.pointsByValue, deferredVisibleEnd, deferredVisibleStart])
+
+  useEffect(() => {
+    setVisibleStart(availableStart)
+    setVisibleEnd(availableEnd)
+  }, [availableEnd, availableStart])
 
   useEffect(() => {
     const updatePlotSize = () => {
@@ -212,7 +249,7 @@ function App() {
       )
 
       if (nextSize > 0) {
-        setPlotSize(nextSize)
+        setPlotSize((currentSize) => (currentSize === nextSize ? currentSize : nextSize))
       }
     }
 
@@ -235,14 +272,14 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!plotRef.current) {
+    if (!basePlotRef.current) {
       return
     }
 
     const marginPad = Math.max(12, Math.round(plotSize * 0.018))
     const axisPad = Math.max(38, Math.round(plotSize * 0.055))
 
-    const plot = Plot.plot({
+    const basePlot = Plot.plot({
       width: plotSize,
       height: plotSize,
       marginTop: marginPad,
@@ -259,22 +296,22 @@ function App() {
       x: {
         type: 'band',
         label: 'Vilket nummer',
-        domain: xValues,
+        domain: chartData.xValues,
         padding: 0,
         tickSize: 0,
-        ticks: xTicks,
+        ticks: chartData.xTicks,
       },
       y: {
         type: 'band',
         label: 'Alfabetisk position',
-        domain: yValues,
+        domain: chartData.yValues,
         padding: 0,
         reverse: true,
         tickSize: 0,
-        ticks: yTicks,
+        ticks: chartData.yTicks,
       },
       marks: [
-        Plot.cell(gridCells, {
+        Plot.cell(chartData.gridCells, {
           x: 'value',
           y: 'alphabeticalRank',
           fill: 'rgba(22, 24, 37, 0.94)',
@@ -285,7 +322,51 @@ function App() {
           stroke: 'rgba(200, 212, 255, 0.22)',
           strokeWidth: 1,
         }),
-        Plot.cell(visibleData, {
+      ],
+    })
+
+    basePlotRef.current.replaceChildren(basePlot)
+
+    return () => {
+      basePlot.remove()
+    }
+  }, [chartData.gridCells, chartData.xTicks, chartData.xValues, chartData.yTicks, chartData.yValues, plotSize])
+
+  useEffect(() => {
+    if (!overlayPlotRef.current) {
+      return
+    }
+
+    const marginPad = Math.max(12, Math.round(plotSize * 0.018))
+    const axisPad = Math.max(38, Math.round(plotSize * 0.055))
+
+    const overlayPlot = Plot.plot({
+      width: plotSize,
+      height: plotSize,
+      marginTop: marginPad,
+      marginRight: marginPad,
+      marginBottom: axisPad,
+      marginLeft: axisPad,
+      style: {
+        background: 'transparent',
+        fontFamily: 'var(--font-body)',
+        overflow: 'visible',
+      },
+      x: {
+        type: 'band',
+        axis: null,
+        domain: chartData.xValues,
+        padding: 0,
+      },
+      y: {
+        type: 'band',
+        axis: null,
+        domain: chartData.yValues,
+        padding: 0,
+        reverse: true,
+      },
+      marks: [
+        Plot.cell(visiblePoints, {
           x: 'value',
           y: 'alphabeticalRank',
           fill: '#9c8dff',
@@ -295,14 +376,16 @@ function App() {
       ],
     })
 
-    plotRef.current.append(plot)
+    overlayPlotRef.current.replaceChildren(overlayPlot)
 
     return () => {
-      plot.remove()
+      overlayPlot.remove()
     }
-  }, [gridCells, plotSize, visibleData, xTicks, xValues, yTicks, yValues])
+  }, [chartData.xValues, chartData.yValues, plotSize, visiblePoints])
 
-  const visibleCount = visibleData.length
+  const availableSpan = Math.max(1, availableEnd - availableStart)
+  const visibleCount = Math.max(0, visibleEnd - visibleStart + 1)
+  const availableCount = Math.max(0, availableEnd - availableStart + 1)
 
   return (
     <main className="app-shell">
@@ -313,14 +396,18 @@ function App() {
             <input
               className="number-input"
               type="number"
-              min="0"
-              value={rangeStart}
+              min={minAvailableStart}
+              max={maxAvailableValue}
+              value={availableStart}
               onChange={(event) => {
-                const nextStart = clamp(Number(event.target.value || 0), 0, maxChartValue)
-                setChartMax((currentMax) => Math.max(currentMax, nextStart, minChartValue))
-                setRangeStart(nextStart)
-                if (nextStart > rangeEnd) {
-                  setRangeEnd(nextStart)
+                const nextStart = clamp(
+                  Number(event.target.value || 0),
+                  minAvailableStart,
+                  maxAvailableValue,
+                )
+                setAvailableStart(nextStart)
+                if (nextStart > availableEnd) {
+                  setAvailableEnd(nextStart)
                 }
               }}
             />
@@ -332,30 +419,30 @@ function App() {
               <div
                 className="range-slider__track"
                 style={{
-                  left: `${(rangeStart / chartMax) * 100}%`,
-                  right: `${100 - (rangeEnd / chartMax) * 100}%`,
+                  left: `${((visibleStart - availableStart) / availableSpan) * 100}%`,
+                  right: `${100 - ((visibleEnd - availableStart) / availableSpan) * 100}%`,
                 }}
               />
               <input
                 className="range-slider__input"
                 type="range"
-                min="0"
-                max={chartMax}
-                value={rangeStart}
+                min={availableStart}
+                max={availableEnd}
+                value={visibleStart}
                 onChange={(event) => {
-                  const nextStart = Math.min(Number(event.target.value), rangeEnd)
-                  setRangeStart(nextStart)
+                  const nextStart = Math.min(Number(event.target.value), visibleEnd)
+                  setVisibleStart(nextStart)
                 }}
               />
               <input
                 className="range-slider__input"
                 type="range"
-                min="0"
-                max={chartMax}
-                value={rangeEnd}
+                min={availableStart}
+                max={availableEnd}
+                value={visibleEnd}
                 onChange={(event) => {
-                  const nextEnd = Math.max(Number(event.target.value), rangeStart)
-                  setRangeEnd(nextEnd)
+                  const nextEnd = Math.max(Number(event.target.value), visibleStart)
+                  setVisibleEnd(nextEnd)
                 }}
               />
             </div>
@@ -366,14 +453,18 @@ function App() {
             <input
               className="number-input"
               type="number"
-              min="0"
-              value={rangeEnd}
+              min={minAvailableStart}
+              max={maxAvailableValue}
+              value={availableEnd}
               onChange={(event) => {
-                const nextEnd = clamp(Number(event.target.value || 0), 0, maxChartValue)
-                setChartMax((currentMax) => Math.max(currentMax, nextEnd, minChartValue))
-                setRangeEnd(nextEnd)
-                if (nextEnd < rangeStart) {
-                  setRangeStart(nextEnd)
+                const nextEnd = clamp(
+                  Number(event.target.value || 0),
+                  minAvailableStart,
+                  maxAvailableValue,
+                )
+                setAvailableEnd(nextEnd)
+                if (nextEnd < availableStart) {
+                  setAvailableStart(nextEnd)
                 }
               }}
             />
@@ -381,7 +472,8 @@ function App() {
         </div>
 
         <p className="control-note">
-          {visibleCount} point{visibleCount === 1 ? '' : 's'} visible. Supported range: 0 to {maxChartValue}.
+          {visibleCount} point{visibleCount === 1 ? '' : 's'} visible from {availableCount}{' '}
+          available. Supported range: {minAvailableStart} to {maxAvailableValue}.
         </p>
       </section>
 
@@ -389,7 +481,10 @@ function App() {
         className="plot-shell"
         style={{ height: `${plotSize}px`, width: `${plotSize}px` }}
       >
-        <div className="plot-canvas" ref={plotRef} />
+        <div className="plot-canvas">
+          <div className="plot-layer plot-layer--base" ref={basePlotRef} />
+          <div className="plot-layer plot-layer--overlay" ref={overlayPlotRef} />
+        </div>
       </div>
     </main>
   )
