@@ -185,7 +185,7 @@ function buildChartData(maxValue: number): ChartData {
 }
 
 function App() {
-  const plotShellRef = useRef<HTMLDivElement | null>(null)
+  const controlsRef = useRef<HTMLElement | null>(null)
   const plotRef = useRef<HTMLDivElement | null>(null)
   const [rangeStart, setRangeStart] = useState(0)
   const [rangeEnd, setRangeEnd] = useState(100)
@@ -198,30 +198,39 @@ function App() {
   )
 
   useEffect(() => {
-    if (!plotShellRef.current) {
-      return
-    }
-
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0]
-
-      if (!entry) {
-        return
-      }
-
-      const nextSize = Math.floor(
-        Math.min(entry.contentRect.width, entry.contentRect.height),
+    const updatePlotSize = () => {
+      const controlsHeight = controlsRef.current?.getBoundingClientRect().height ?? 0
+      const viewportWidth = window.innerWidth
+      const viewportHeight = window.innerHeight
+      const outerPadding = viewportWidth <= 720 ? 18 : 28
+      const controlsGap = viewportWidth <= 720 ? 8 : 10
+      const availableWidth = viewportWidth - outerPadding * 2
+      const availableHeight = viewportHeight - controlsHeight - controlsGap - outerPadding * 2
+      const nextSize = Math.max(
+        280,
+        Math.floor(Math.min(availableWidth, availableHeight, 1480)),
       )
 
       if (nextSize > 0) {
         setPlotSize(nextSize)
       }
+    }
+
+    updatePlotSize()
+
+    const observer = new ResizeObserver(() => {
+      updatePlotSize()
     })
 
-    observer.observe(plotShellRef.current)
+    if (controlsRef.current) {
+      observer.observe(controlsRef.current)
+    }
+
+    window.addEventListener('resize', updatePlotSize)
 
     return () => {
       observer.disconnect()
+      window.removeEventListener('resize', updatePlotSize)
     }
   }, [])
 
@@ -297,7 +306,7 @@ function App() {
 
   return (
     <main className="app-shell">
-      <section className="controls-shell">
+      <section className="controls-shell" ref={controlsRef}>
         <div className="control-row">
           <label className="number-group">
             <span>From</span>
@@ -376,7 +385,10 @@ function App() {
         </p>
       </section>
 
-      <div className="plot-shell" ref={plotShellRef}>
+      <div
+        className="plot-shell"
+        style={{ height: `${plotSize}px`, width: `${plotSize}px` }}
+      >
         <div className="plot-canvas" ref={plotRef} />
       </div>
     </main>
