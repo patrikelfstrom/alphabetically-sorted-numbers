@@ -714,27 +714,7 @@ function App() {
             </select>
           </label>
 
-          <label className="toggle-switch toggle-switch--compact">
-            <input
-              className="toggle-switch__input"
-              type="checkbox"
-              checked={showEqualityLine}
-              onChange={(event) => {
-                setShowEqualityLine(event.target.checked);
-              }}
-            />
-            <span className="toggle-switch__control" aria-hidden="true">
-              <span className="toggle-switch__thumb" />
-            </span>
-            <span className="toggle-switch__copy">
-              <strong>Guide y=x+1</strong>
-              <small>1-based rank line</small>
-            </span>
-          </label>
-        </div>
-
-        <div className="control-row">
-          <label className="number-group">
+          <label className="number-group number-group--from">
             <span>From</span>
             <input
               className="number-input"
@@ -756,7 +736,7 @@ function App() {
             />
           </label>
 
-          <label className="number-group">
+          <label className="number-group number-group--to">
             <span>To</span>
             <input
               className="number-input"
@@ -776,6 +756,24 @@ function App() {
                 );
               }}
             />
+          </label>
+
+          <label className="toggle-switch toggle-switch--compact">
+            <input
+              className="toggle-switch__input"
+              type="checkbox"
+              checked={showEqualityLine}
+              onChange={(event) => {
+                setShowEqualityLine(event.target.checked);
+              }}
+            />
+            <span className="toggle-switch__control" aria-hidden="true">
+              <span className="toggle-switch__thumb" />
+            </span>
+            <span className="toggle-switch__copy">
+              <strong>Guide y=x+1</strong>
+              <small>1-based rank line</small>
+            </span>
           </label>
         </div>
 

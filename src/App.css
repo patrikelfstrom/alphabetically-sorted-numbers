@@ -61,15 +61,13 @@
 
 .control-toolbar {
   display: grid;
-  grid-template-columns: minmax(8rem, 12rem) minmax(8rem, 10rem) minmax(0, 1fr);
+  grid-template-columns:
+    minmax(8rem, 1.2fr)
+    minmax(8rem, 1.1fr)
+    minmax(5.75rem, 0.75fr)
+    minmax(5.75rem, 0.75fr)
+    auto;
   gap: 0.65rem;
-  align-items: end;
-}
-
-.control-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(5.2rem, 1fr));
-  gap: 0.7rem;
   align-items: end;
 }
 
@@ -83,6 +81,11 @@
 }
 
 .number-group--display {
+  min-width: 0;
+}
+
+.number-group--from,
+.number-group--to {
   min-width: 0;
 }
 
@@ -469,11 +472,6 @@
   .control-toolbar {
     grid-template-columns: 1fr;
     gap: 0.5rem;
-  }
-
-  .control-row {
-    grid-template-columns: 1fr;
-    gap: 0.55rem;
   }
 
   .toggle-switch--compact {
