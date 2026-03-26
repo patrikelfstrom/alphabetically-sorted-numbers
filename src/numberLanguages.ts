@@ -203,7 +203,7 @@ const spanishHundreds: Record<number, string> = {
 
 function toSwedishNumber(value: number): string {
   if (value < 0) {
-    return `minus${toSwedishNumber(Math.abs(value))}`
+    return `minus ${toSwedishNumber(Math.abs(value))}`
   }
 
   if (value in swedishUnits) {
@@ -307,7 +307,7 @@ function toGermanUnit(value: number, inCompound = false): string {
 
 function toGermanNumber(value: number): string {
   if (value < 0) {
-    return `minus${toGermanNumber(Math.abs(value))}`
+    return `minus ${toGermanNumber(Math.abs(value))}`
   }
 
   if (value in germanUnits) {
@@ -372,7 +372,7 @@ function toFrenchUnder100(value: number): string {
     }
 
     if (unitValue === 1) {
-      return `${frenchTens[tenValue]} et un`
+      return `${frenchTens[tenValue]}-et-un`
     }
 
     return `${frenchTens[tenValue]}-${frenchBase[unitValue]}`
@@ -380,7 +380,7 @@ function toFrenchUnder100(value: number): string {
 
   if (value < 80) {
     if (value === 71) {
-      return 'soixante et onze'
+      return 'soixante-et-onze'
     }
 
     return `soixante-${toFrenchUnder100(value - 60)}`

@@ -350,8 +350,8 @@ function App() {
   return (
     <main className="app-shell">
       <section className="controls-shell" ref={controlsRef}>
-        <div className="control-row control-row--meta">
-          <label className="number-group">
+        <div className="control-toolbar">
+          <label className="number-group number-group--language">
             <span>Language</span>
             <select
               className="number-input select-input"
@@ -368,10 +368,29 @@ function App() {
             </select>
           </label>
 
-          <p className="control-copy">
-            Sort number names using {selectedLanguage.label.toLowerCase()} spelling and
-            collation rules.
-          </p>
+          <div className="control-status" aria-live="polite">
+            <span>
+              {visibleCount} / {availableCount} visible
+            </span>
+          </div>
+
+          <label className="toggle-switch toggle-switch--compact">
+            <input
+              className="toggle-switch__input"
+              type="checkbox"
+              checked={showEqualityLine}
+              onChange={(event) => {
+                setShowEqualityLine(event.target.checked)
+              }}
+            />
+            <span className="toggle-switch__control" aria-hidden="true">
+              <span className="toggle-switch__thumb" />
+            </span>
+            <span className="toggle-switch__copy">
+              <strong>Guide y=x+1</strong>
+              <small>1-based rank line</small>
+            </span>
+          </label>
         </div>
 
         <div className="control-row">
@@ -449,31 +468,9 @@ function App() {
           </label>
         </div>
 
-        <label className="toggle-switch">
-          <input
-            className="toggle-switch__input"
-            type="checkbox"
-            checked={showEqualityLine}
-            onChange={(event) => {
-              setShowEqualityLine(event.target.checked)
-            }}
-          />
-          <span className="toggle-switch__control" aria-hidden="true">
-            <span className="toggle-switch__thumb" />
-          </span>
-          <span className="toggle-switch__copy">
-            <strong>Show y=x+1</strong>
-            <small>
-              Compare values with their 1-based alphabetical rank in{' '}
-              {selectedLanguage.label.toLowerCase()}.
-            </small>
-          </span>
-        </label>
-
         <p className="control-note">
-          {visibleCount} point{visibleCount === 1 ? '' : 's'} visible from {availableCount}{' '}
-          available in {selectedLanguage.label}. Supported range: {minAvailableStart} to{' '}
-          {maxAvailableValue}.
+          Alphabetical positions are recalculated using {selectedLanguage.label.toLowerCase()}{' '}
+          spelling and collation rules.
         </p>
       </section>
 
