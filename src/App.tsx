@@ -1,7 +1,7 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import * as Plot from '@observablehq/plot'
-import * as d3 from 'd3'
-import './App.css'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import * as Plot from "@observablehq/plot";
+import * as d3 from "d3";
+import "./App.css";
 import {
   getLanguageCollator,
   getNumberName,
@@ -9,106 +9,118 @@ import {
   numberLanguageById,
   numberLanguages,
   type LanguageId,
-} from './numberLanguages'
+} from "./numberLanguages";
 
 type NumberPoint = {
-  alphabeticalRank: number
-  name: string
-  value: number
-}
+  alphabeticalRank: number;
+  name: string;
+  value: number;
+};
 
 type RawNumberEntry = {
-  name: string
-  sortName: string
-  value: number
-}
+  name: string;
+  sortName: string;
+  value: number;
+};
 
 type EqualityPoint = {
-  alphabeticalRank: number
-  value: number
-}
+  alphabeticalRank: number;
+  value: number;
+};
 
 type ChartData = {
-  data: NumberPoint[]
-  equalityPoints: EqualityPoint[]
-  pointsByValue: Map<number, NumberPoint>
-  xValues: number[]
-  xTicks: number[]
-  yValues: number[]
-  yTicks: number[]
-}
+  data: NumberPoint[];
+  equalityPoints: EqualityPoint[];
+  pointsByValue: Map<number, NumberPoint>;
+  xValues: number[];
+  xTicks: number[];
+  yValues: number[];
+  yTicks: number[];
+};
 
-const minAvailableStart = 0
-const maxAvailableValue = 5000
-const defaultAvailableStart = 0
-const defaultAvailableEnd = 100
-const userOptionsStorageKey = 'alphabetical-numbers:user-options'
+type PointDisplayMode = "auto" | "cells" | "squares";
+
+const minAvailableStart = 0;
+const maxAvailableValue = 5000;
+const defaultAvailableStart = 0;
+const defaultAvailableEnd = 100;
+const userOptionsStorageKey = "alphabetical-numbers:user-options";
+const compactPointMinSize = 1;
+const compactPointMaxSize = 4.8;
 
 type StoredUserOptions = {
-  selectedLanguageId: LanguageId
-  availableStart: number
-  availableEnd: number
-  visibleStart: number
-  visibleEnd: number
-  showEqualityLine: boolean
-}
+  selectedLanguageId: LanguageId;
+  availableStart: number;
+  availableEnd: number;
+  visibleStart: number;
+  visibleEnd: number;
+  pointDisplayMode: PointDisplayMode;
+  showEqualityLine: boolean;
+};
 
 function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value))
+  return Math.min(max, Math.max(min, value));
 }
 
 function isLanguageId(value: unknown): value is LanguageId {
-  return typeof value === 'string' && Object.hasOwn(numberLanguageById, value)
+  return typeof value === "string" && Object.hasOwn(numberLanguageById, value);
+}
+
+function isPointDisplayMode(value: unknown): value is PointDisplayMode {
+  return value === "auto" || value === "cells" || value === "squares";
 }
 
 function getStoredNumber(value: unknown, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value)
+  return typeof value === "number" && Number.isFinite(value)
     ? Math.trunc(value)
-    : fallback
+    : fallback;
 }
 
 function getStoredUserOptions(): StoredUserOptions | null {
-  if (typeof window === 'undefined') {
-    return null
+  if (typeof window === "undefined") {
+    return null;
   }
 
   try {
-    const rawValue = window.localStorage.getItem(userOptionsStorageKey)
+    const rawValue = window.localStorage.getItem(userOptionsStorageKey);
 
     if (!rawValue) {
-      return null
+      return null;
     }
 
-    const parsedValue: unknown = JSON.parse(rawValue)
+    const parsedValue: unknown = JSON.parse(rawValue);
 
-    if (!parsedValue || typeof parsedValue !== 'object') {
-      return null
+    if (!parsedValue || typeof parsedValue !== "object") {
+      return null;
     }
 
-    const parsedOptions = parsedValue as Record<string, unknown>
+    const parsedOptions = parsedValue as Record<string, unknown>;
     const selectedLanguageId = isLanguageId(parsedOptions.selectedLanguageId)
       ? parsedOptions.selectedLanguageId
-      : 'sv'
+      : "sv";
     const availableStart = clamp(
       getStoredNumber(parsedOptions.availableStart, defaultAvailableStart),
       minAvailableStart,
       maxAvailableValue,
-    )
+    );
     const availableEnd = clamp(
       getStoredNumber(parsedOptions.availableEnd, defaultAvailableEnd),
       availableStart,
       maxAvailableValue,
-    )
+    );
     const visibleStart = clamp(
       getStoredNumber(parsedOptions.visibleStart, availableStart),
       availableStart,
       availableEnd,
-    )
+    );
     const visibleEnd = clamp(
       getStoredNumber(parsedOptions.visibleEnd, availableEnd),
       visibleStart,
       availableEnd,
-    )
+    );
+    const pointDisplayMode = isPointDisplayMode(parsedOptions.pointDisplayMode)
+      ? parsedOptions.pointDisplayMode
+      : "auto";
 
     return {
       selectedLanguageId,
@@ -116,38 +128,39 @@ function getStoredUserOptions(): StoredUserOptions | null {
       availableEnd,
       visibleStart,
       visibleEnd,
+      pointDisplayMode,
       showEqualityLine: parsedOptions.showEqualityLine === true,
-    }
+    };
   } catch {
-    return null
+    return null;
   }
 }
 
 function getTickStep(maxValue: number): number {
-  const roughStep = Math.max(1, Math.ceil(maxValue / 10))
-  const magnitude = 10 ** Math.floor(Math.log10(roughStep))
+  const roughStep = Math.max(1, Math.ceil(maxValue / 10));
+  const magnitude = 10 ** Math.floor(Math.log10(roughStep));
 
   if (roughStep <= magnitude) {
-    return magnitude
+    return magnitude;
   }
 
   if (roughStep <= magnitude * 2) {
-    return magnitude * 2
+    return magnitude * 2;
   }
 
   if (roughStep <= magnitude * 5) {
-    return magnitude * 5
+    return magnitude * 5;
   }
 
-  return magnitude * 10
+  return magnitude * 10;
 }
 
 function getPlotLayout(plotSize: number) {
-  const marginPad = Math.max(12, Math.round(plotSize * 0.018))
-  const axisPad = Math.max(38, Math.round(plotSize * 0.055))
-  const plotAreaSize = Math.max(0, plotSize - axisPad - marginPad)
+  const marginPad = Math.max(12, Math.round(plotSize * 0.018));
+  const axisPad = Math.max(38, Math.round(plotSize * 0.055));
+  const plotAreaSize = Math.max(0, plotSize - axisPad - marginPad);
 
-  return { axisPad, marginPad, plotAreaSize }
+  return { axisPad, marginPad, plotAreaSize };
 }
 
 function buildChartData(
@@ -155,17 +168,17 @@ function buildChartData(
   rangeEnd: number,
   languageId: LanguageId,
 ): ChartData {
-  const xValues = d3.range(rangeStart, rangeEnd + 1)
-  const count = xValues.length
-  const collator = getLanguageCollator(languageId)
-  const yValues = d3.range(1, count + 1)
+  const xValues = d3.range(rangeStart, rangeEnd + 1);
+  const count = xValues.length;
+  const collator = getLanguageCollator(languageId);
+  const yValues = d3.range(1, count + 1);
   const rawData: RawNumberEntry[] = xValues.map(
     (value: number): RawNumberEntry => ({
       name: getNumberName(value, languageId),
       sortName: getSortableNumberName(value, languageId),
       value,
     }),
-  )
+  );
 
   const data: NumberPoint[] = d3
     .sort(rawData, (a: RawNumberEntry, b: RawNumberEntry) =>
@@ -175,137 +188,173 @@ function buildChartData(
       alphabeticalRank: index + 1,
       name: entry.name,
       value: entry.value,
-    }))
+    }));
 
-  const pointsByValue = new Map<number, NumberPoint>()
+  const pointsByValue = new Map<number, NumberPoint>();
 
   for (const point of data) {
-    pointsByValue.set(point.value, point)
+    pointsByValue.set(point.value, point);
   }
 
-  const tickStep = getTickStep(Math.max(1, rangeEnd - rangeStart))
-  const xTicks = d3.range(rangeStart, rangeEnd + 1, tickStep)
-  const yTicks = d3.range(1, count + 1, tickStep)
+  const tickStep = getTickStep(Math.max(1, rangeEnd - rangeStart));
+  const xTicks = d3.range(rangeStart, rangeEnd + 1, tickStep);
+  const yTicks = d3.range(1, count + 1, tickStep);
 
   if (xTicks[xTicks.length - 1] !== rangeEnd) {
-    xTicks.push(rangeEnd)
+    xTicks.push(rangeEnd);
   }
 
   if (yTicks.length === 0 || yTicks[yTicks.length - 1] !== count) {
-    yTicks.push(count)
+    yTicks.push(count);
   }
 
-  const equalityStart = Math.max(rangeStart, 0)
-  const equalityEnd = Math.min(rangeEnd, count - 1)
+  const equalityStart = Math.max(rangeStart, 0);
+  const equalityEnd = Math.min(rangeEnd, count - 1);
   const equalityPoints =
     equalityStart <= equalityEnd
       ? d3.range(equalityStart, equalityEnd + 1).map((value: number) => ({
           alphabeticalRank: value + 1,
           value,
         }))
-      : []
+      : [];
 
-  return { data, equalityPoints, pointsByValue, xTicks, xValues, yTicks, yValues }
+  return {
+    data,
+    equalityPoints,
+    pointsByValue,
+    xTicks,
+    xValues,
+    yTicks,
+    yValues,
+  };
+}
+
+function getPointTitle(entry: NumberPoint): string {
+  return `${entry.name}\nValue: ${entry.value}\nPosition: ${entry.alphabeticalRank}`;
 }
 
 function App() {
-  const controlsRef = useRef<HTMLElement | null>(null)
-  const basePlotRef = useRef<HTMLDivElement | null>(null)
-  const overlayPlotRef = useRef<HTMLDivElement | null>(null)
-  const initialUserOptions = useMemo(() => getStoredUserOptions(), [])
+  const controlsRef = useRef<HTMLElement | null>(null);
+  const basePlotRef = useRef<HTMLDivElement | null>(null);
+  const overlayPlotRef = useRef<HTMLDivElement | null>(null);
+  const initialUserOptions = useMemo(() => getStoredUserOptions(), []);
   const [selectedLanguageId, setSelectedLanguageId] = useState<LanguageId>(
-    initialUserOptions?.selectedLanguageId ?? 'sv',
-  )
+    initialUserOptions?.selectedLanguageId ?? "sv",
+  );
   const [availableStart, setAvailableStart] = useState(
     initialUserOptions?.availableStart ?? defaultAvailableStart,
-  )
+  );
   const [availableEnd, setAvailableEnd] = useState(
     initialUserOptions?.availableEnd ?? defaultAvailableEnd,
-  )
+  );
   const [visibleStart, setVisibleStart] = useState(
     initialUserOptions?.visibleStart ?? defaultAvailableStart,
-  )
+  );
   const [visibleEnd, setVisibleEnd] = useState(
     initialUserOptions?.visibleEnd ?? defaultAvailableEnd,
-  )
-  const [plotSize, setPlotSize] = useState(720)
+  );
+  const [plotSize, setPlotSize] = useState(720);
+  const [pointDisplayMode, setPointDisplayMode] = useState<PointDisplayMode>(
+    initialUserOptions?.pointDisplayMode ?? "auto",
+  );
   const [showEqualityLine, setShowEqualityLine] = useState(
     initialUserOptions?.showEqualityLine ?? false,
-  )
-  const selectedLanguage = numberLanguageById[selectedLanguageId]
+  );
+  const selectedLanguage = numberLanguageById[selectedLanguageId];
 
   const chartData = useMemo(
     () => buildChartData(availableStart, availableEnd, selectedLanguageId),
     [availableEnd, availableStart, selectedLanguageId],
-  )
-  const deferredVisibleStart = useDeferredValue(visibleStart)
-  const deferredVisibleEnd = useDeferredValue(visibleEnd)
+  );
+  const deferredVisibleStart = useDeferredValue(visibleStart);
+  const deferredVisibleEnd = useDeferredValue(visibleEnd);
 
   const visiblePoints = useMemo(() => {
-    const points: NumberPoint[] = []
+    const points: NumberPoint[] = [];
 
     for (
       let value = deferredVisibleStart;
       value <= deferredVisibleEnd;
       value += 1
     ) {
-      const point = chartData.pointsByValue.get(value)
+      const point = chartData.pointsByValue.get(value);
 
       if (point) {
-        points.push(point)
+        points.push(point);
       }
     }
 
-    return points
-  }, [chartData.pointsByValue, deferredVisibleEnd, deferredVisibleStart])
+    return points;
+  }, [chartData.pointsByValue, deferredVisibleEnd, deferredVisibleStart]);
+  const availableSpan = Math.max(1, availableEnd - availableStart);
+  const visibleCount = Math.max(0, visibleEnd - visibleStart + 1);
+  const availableCount = Math.max(0, availableEnd - availableStart + 1);
+  const { axisPad, marginPad, plotAreaSize } = getPlotLayout(plotSize);
+  const gridCellSize = plotAreaSize / availableCount;
+  const useCompactPointSquares =
+    pointDisplayMode === "squares" ||
+    (pointDisplayMode === "auto" && gridCellSize < 6);
+  const compactPointRadius = clamp(
+    Math.max(gridCellSize * 0.95, plotSize * 0.0036),
+    compactPointMinSize,
+    compactPointMaxSize,
+  );
+  const compactPointSize = compactPointRadius * 2;
+  const visibleGridCellSize = useCompactPointSquares
+    ? Math.max(gridCellSize, compactPointSize)
+    : gridCellSize;
 
   useEffect(() => {
     const updatePlotSize = () => {
-      const controlsHeight = controlsRef.current?.getBoundingClientRect().height ?? 0
-      const viewportWidth = window.innerWidth
-      const viewportHeight = window.innerHeight
-      const outerPadding = viewportWidth <= 720 ? 18 : 28
-      const controlsGap = viewportWidth <= 720 ? 8 : 10
-      const availableWidth = viewportWidth - outerPadding * 2
-      const availableHeight = viewportHeight - controlsHeight - controlsGap - outerPadding * 2
+      const controlsHeight =
+        controlsRef.current?.getBoundingClientRect().height ?? 0;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const outerPadding = viewportWidth <= 720 ? 18 : 28;
+      const controlsGap = viewportWidth <= 720 ? 8 : 10;
+      const availableWidth = viewportWidth - outerPadding * 2;
+      const availableHeight =
+        viewportHeight - controlsHeight - controlsGap - outerPadding * 2;
       const nextSize = Math.max(
         280,
         Math.floor(Math.min(availableWidth, availableHeight, 1480)),
-      )
+      );
 
       if (nextSize > 0) {
-        setPlotSize((currentSize) => (currentSize === nextSize ? currentSize : nextSize))
+        setPlotSize((currentSize) =>
+          currentSize === nextSize ? currentSize : nextSize,
+        );
       }
-    }
+    };
 
-    updatePlotSize()
+    updatePlotSize();
 
     const observer = new ResizeObserver(() => {
-      updatePlotSize()
-    })
+      updatePlotSize();
+    });
 
     if (controlsRef.current) {
-      observer.observe(controlsRef.current)
+      observer.observe(controlsRef.current);
     }
 
-    window.addEventListener('resize', updatePlotSize)
+    window.addEventListener("resize", updatePlotSize);
 
     return () => {
-      observer.disconnect()
-      window.removeEventListener('resize', updatePlotSize)
-    }
-  }, [])
+      observer.disconnect();
+      window.removeEventListener("resize", updatePlotSize);
+    };
+  }, []);
 
   const updateAvailableRange = (nextStart: number, nextEnd: number) => {
-    setAvailableStart(nextStart)
-    setAvailableEnd(nextEnd)
-    setVisibleStart(nextStart)
-    setVisibleEnd(nextEnd)
-  }
+    setAvailableStart(nextStart);
+    setAvailableEnd(nextEnd);
+    setVisibleStart(nextStart);
+    setVisibleEnd(nextEnd);
+  };
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
+    if (typeof window === "undefined") {
+      return;
     }
 
     try {
@@ -317,27 +366,29 @@ function App() {
           availableEnd,
           visibleStart,
           visibleEnd,
+          pointDisplayMode,
           showEqualityLine,
         } satisfies StoredUserOptions),
-      )
+      );
     } catch {
       // Ignore storage write failures so the app stays usable in restricted contexts.
     }
   }, [
     availableEnd,
     availableStart,
+    pointDisplayMode,
     selectedLanguageId,
     showEqualityLine,
     visibleEnd,
     visibleStart,
-  ])
+  ]);
 
   useEffect(() => {
     if (!basePlotRef.current) {
-      return
+      return;
     }
 
-    const { axisPad, marginPad } = getPlotLayout(plotSize)
+    const { axisPad, marginPad } = getPlotLayout(plotSize);
 
     const basePlot = Plot.plot({
       width: plotSize,
@@ -347,23 +398,23 @@ function App() {
       marginBottom: axisPad,
       marginLeft: axisPad,
       style: {
-        background: 'transparent',
-        color: '#f2f4ff',
-        fontFamily: 'var(--font-body)',
+        background: "transparent",
+        color: "#f2f4ff",
+        fontFamily: "var(--font-body)",
         fontSize: `${Math.max(10, Math.round(plotSize * 0.011))}px`,
-        overflow: 'visible',
+        overflow: "visible",
       },
       x: {
-        type: 'band',
-        label: 'Number value',
+        type: "band",
+        label: "Number value",
         domain: chartData.xValues,
         padding: 0,
         tickSize: 0,
         ticks: chartData.xTicks,
       },
       y: {
-        type: 'band',
-        label: 'Alphabetical position',
+        type: "band",
+        label: "Alphabetical position",
         domain: chartData.yValues,
         padding: 0,
         reverse: true,
@@ -373,25 +424,50 @@ function App() {
       marks: [
         Plot.frame({
           inset: 0,
-          stroke: 'rgba(200, 212, 255, 0.22)',
+          stroke: "rgba(200, 212, 255, 0.22)",
           strokeWidth: 1,
         }),
       ],
-    })
+    });
 
-    basePlotRef.current.replaceChildren(basePlot)
+    basePlotRef.current.replaceChildren(basePlot);
 
     return () => {
-      basePlot.remove()
-    }
-  }, [chartData.xTicks, chartData.xValues, chartData.yTicks, chartData.yValues, plotSize])
+      basePlot.remove();
+    };
+  }, [
+    chartData.xTicks,
+    chartData.xValues,
+    chartData.yTicks,
+    chartData.yValues,
+    plotSize,
+  ]);
 
   useEffect(() => {
     if (!overlayPlotRef.current) {
-      return
+      return;
     }
 
-    const { axisPad, marginPad } = getPlotLayout(plotSize)
+    const { axisPad, marginPad } = getPlotLayout(plotSize);
+    const visiblePointMark = useCompactPointSquares
+      ? Plot.dot(visiblePoints, {
+          x: "value",
+          y: "alphabeticalRank",
+          fill: "#9c8dff",
+          fillOpacity: 0.86,
+          symbol: "square",
+          stroke: "rgba(235, 240, 255, 0.48)",
+          strokeWidth: 0.7,
+          r: compactPointRadius,
+          title: getPointTitle,
+        })
+      : Plot.cell(visiblePoints, {
+          x: "value",
+          y: "alphabeticalRank",
+          fill: "#9c8dff",
+          inset: 0.7,
+          title: getPointTitle,
+        });
 
     const overlayPlot = Plot.plot({
       width: plotSize,
@@ -401,18 +477,18 @@ function App() {
       marginBottom: axisPad,
       marginLeft: axisPad,
       style: {
-        background: 'transparent',
-        fontFamily: 'var(--font-body)',
-        overflow: 'visible',
+        background: "transparent",
+        fontFamily: "var(--font-body)",
+        overflow: "visible",
       },
       x: {
-        type: 'band',
+        type: "band",
         axis: null,
         domain: chartData.xValues,
         padding: 0,
       },
       y: {
-        type: 'band',
+        type: "band",
         axis: null,
         domain: chartData.yValues,
         padding: 0,
@@ -422,48 +498,44 @@ function App() {
         ...(showEqualityLine && chartData.equalityPoints.length > 1
           ? [
               Plot.line(chartData.equalityPoints, {
-                x: 'value',
-                y: 'alphabeticalRank',
-                stroke: '#ffd27a',
+                x: "value",
+                y: "alphabeticalRank",
+                stroke: "#ffd27a",
                 strokeWidth: Math.max(2, plotSize * 0.0032),
                 strokeOpacity: 0.92,
-                strokeDasharray: '8 6',
+                strokeDasharray: "8 6",
               }),
             ]
           : []),
         ...(showEqualityLine && chartData.equalityPoints.length === 1
           ? [
               Plot.dot(chartData.equalityPoints, {
-                x: 'value',
-                y: 'alphabeticalRank',
-                fill: '#ffd27a',
+                x: "value",
+                y: "alphabeticalRank",
+                fill: "#ffd27a",
                 r: Math.max(4, plotSize * 0.0075),
               }),
             ]
           : []),
-        Plot.cell(visiblePoints, {
-          x: 'value',
-          y: 'alphabeticalRank',
-          fill: '#9c8dff',
-          inset: 0.7,
-          title: (entry: NumberPoint) =>
-            `${entry.name}\nValue: ${entry.value}\nPosition: ${entry.alphabeticalRank}`,
-        }),
+        visiblePointMark,
       ],
-    })
+    });
 
-    overlayPlotRef.current.replaceChildren(overlayPlot)
+    overlayPlotRef.current.replaceChildren(overlayPlot);
 
     return () => {
-      overlayPlot.remove()
-    }
-  }, [chartData.equalityPoints, chartData.xValues, chartData.yValues, plotSize, showEqualityLine, visiblePoints])
-
-  const availableSpan = Math.max(1, availableEnd - availableStart)
-  const visibleCount = Math.max(0, visibleEnd - visibleStart + 1)
-  const availableCount = Math.max(0, availableEnd - availableStart + 1)
-  const { axisPad, marginPad, plotAreaSize } = getPlotLayout(plotSize)
-  const gridCellSize = plotAreaSize / availableCount
+      overlayPlot.remove();
+    };
+  }, [
+    chartData.equalityPoints,
+    chartData.xValues,
+    chartData.yValues,
+    compactPointRadius,
+    plotSize,
+    showEqualityLine,
+    useCompactPointSquares,
+    visiblePoints,
+  ]);
 
   return (
     <main className="app-shell">
@@ -475,7 +547,7 @@ function App() {
               className="number-input select-input"
               value={selectedLanguageId}
               onChange={(event) => {
-                setSelectedLanguageId(event.target.value as LanguageId)
+                setSelectedLanguageId(event.target.value as LanguageId);
               }}
             >
               {numberLanguages.map((language) => (
@@ -483,6 +555,21 @@ function App() {
                   {language.label}
                 </option>
               ))}
+            </select>
+          </label>
+
+          <label className="number-group number-group--display">
+            <span>Display</span>
+            <select
+              className="number-input select-input"
+              value={pointDisplayMode}
+              onChange={(event) => {
+                setPointDisplayMode(event.target.value as PointDisplayMode);
+              }}
+            >
+              <option value="auto">Auto</option>
+              <option value="cells">Cells</option>
+              <option value="squares">Squares</option>
             </select>
           </label>
 
@@ -498,7 +585,7 @@ function App() {
               type="checkbox"
               checked={showEqualityLine}
               onChange={(event) => {
-                setShowEqualityLine(event.target.checked)
+                setShowEqualityLine(event.target.checked);
               }}
             />
             <span className="toggle-switch__control" aria-hidden="true">
@@ -525,8 +612,11 @@ function App() {
                   Number(event.target.value || 0),
                   minAvailableStart,
                   maxAvailableValue,
-                )
-                updateAvailableRange(nextStart, Math.max(nextStart, availableEnd))
+                );
+                updateAvailableRange(
+                  nextStart,
+                  Math.max(nextStart, availableEnd),
+                );
               }}
             />
           </label>
@@ -548,8 +638,11 @@ function App() {
                 max={availableEnd}
                 value={visibleStart}
                 onChange={(event) => {
-                  const nextStart = Math.min(Number(event.target.value), visibleEnd)
-                  setVisibleStart(nextStart)
+                  const nextStart = Math.min(
+                    Number(event.target.value),
+                    visibleEnd,
+                  );
+                  setVisibleStart(nextStart);
                 }}
               />
               <input
@@ -559,8 +652,11 @@ function App() {
                 max={availableEnd}
                 value={visibleEnd}
                 onChange={(event) => {
-                  const nextEnd = Math.max(Number(event.target.value), visibleStart)
-                  setVisibleEnd(nextEnd)
+                  const nextEnd = Math.max(
+                    Number(event.target.value),
+                    visibleStart,
+                  );
+                  setVisibleEnd(nextEnd);
                 }}
               />
             </div>
@@ -579,16 +675,19 @@ function App() {
                   Number(event.target.value || 0),
                   minAvailableStart,
                   maxAvailableValue,
-                )
-                updateAvailableRange(Math.min(availableStart, nextEnd), nextEnd)
+                );
+                updateAvailableRange(
+                  Math.min(availableStart, nextEnd),
+                  nextEnd,
+                );
               }}
             />
           </label>
         </div>
 
         <p className="control-note">
-          Alphabetical positions are recalculated using {selectedLanguage.label.toLowerCase()}{' '}
-          spelling and collation rules.
+          Alphabetical positions are recalculated using{" "}
+          {selectedLanguage.label.toLowerCase()} spelling and collation rules.
         </p>
       </section>
 
@@ -605,16 +704,19 @@ function App() {
                 left: `${axisPad}px`,
                 width: `${plotAreaSize}px`,
                 height: `${plotAreaSize}px`,
-                backgroundSize: `${gridCellSize}px ${gridCellSize}px`,
+                backgroundSize: `${visibleGridCellSize}px ${visibleGridCellSize}px`,
               }}
             />
             <div className="plot-layer plot-layer--base" ref={basePlotRef} />
-            <div className="plot-layer plot-layer--overlay" ref={overlayPlotRef} />
+            <div
+              className="plot-layer plot-layer--overlay"
+              ref={overlayPlotRef}
+            />
           </div>
         </div>
       </div>
     </main>
-  )
+  );
 }
 
-export default App
+export default App;

@@ -61,7 +61,7 @@
 
 .control-toolbar {
   display: grid;
-  grid-template-columns: minmax(10rem, 12rem) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(8rem, 12rem) minmax(8rem, 10rem) minmax(0, 1fr) auto;
   gap: 0.65rem;
   align-items: end;
 }
@@ -80,6 +80,10 @@
 }
 
 .number-group--language {
+  min-width: 0;
+}
+
+.number-group--display {
   min-width: 0;
 }
 
