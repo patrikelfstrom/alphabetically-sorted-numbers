@@ -42,9 +42,85 @@ const minAvailableStart = 0
 const maxAvailableValue = 5000
 const defaultAvailableStart = 0
 const defaultAvailableEnd = 100
+const userOptionsStorageKey = 'alphabetical-numbers:user-options'
+
+type StoredUserOptions = {
+  selectedLanguageId: LanguageId
+  availableStart: number
+  availableEnd: number
+  visibleStart: number
+  visibleEnd: number
+  showEqualityLine: boolean
+}
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
+}
+
+function isLanguageId(value: unknown): value is LanguageId {
+  return typeof value === 'string' && Object.hasOwn(numberLanguageById, value)
+}
+
+function getStoredNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.trunc(value)
+    : fallback
+}
+
+function getStoredUserOptions(): StoredUserOptions | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(userOptionsStorageKey)
+
+    if (!rawValue) {
+      return null
+    }
+
+    const parsedValue: unknown = JSON.parse(rawValue)
+
+    if (!parsedValue || typeof parsedValue !== 'object') {
+      return null
+    }
+
+    const parsedOptions = parsedValue as Record<string, unknown>
+    const selectedLanguageId = isLanguageId(parsedOptions.selectedLanguageId)
+      ? parsedOptions.selectedLanguageId
+      : 'sv'
+    const availableStart = clamp(
+      getStoredNumber(parsedOptions.availableStart, defaultAvailableStart),
+      minAvailableStart,
+      maxAvailableValue,
+    )
+    const availableEnd = clamp(
+      getStoredNumber(parsedOptions.availableEnd, defaultAvailableEnd),
+      availableStart,
+      maxAvailableValue,
+    )
+    const visibleStart = clamp(
+      getStoredNumber(parsedOptions.visibleStart, availableStart),
+      availableStart,
+      availableEnd,
+    )
+    const visibleEnd = clamp(
+      getStoredNumber(parsedOptions.visibleEnd, availableEnd),
+      visibleStart,
+      availableEnd,
+    )
+
+    return {
+      selectedLanguageId,
+      availableStart,
+      availableEnd,
+      visibleStart,
+      visibleEnd,
+      showEqualityLine: parsedOptions.showEqualityLine === true,
+    }
+  } catch {
+    return null
+  }
 }
 
 function getTickStep(maxValue: number): number {
@@ -136,13 +212,26 @@ function App() {
   const controlsRef = useRef<HTMLElement | null>(null)
   const basePlotRef = useRef<HTMLDivElement | null>(null)
   const overlayPlotRef = useRef<HTMLDivElement | null>(null)
-  const [selectedLanguageId, setSelectedLanguageId] = useState<LanguageId>('sv')
-  const [availableStart, setAvailableStart] = useState(defaultAvailableStart)
-  const [availableEnd, setAvailableEnd] = useState(defaultAvailableEnd)
-  const [visibleStart, setVisibleStart] = useState(defaultAvailableStart)
-  const [visibleEnd, setVisibleEnd] = useState(defaultAvailableEnd)
+  const initialUserOptions = useMemo(() => getStoredUserOptions(), [])
+  const [selectedLanguageId, setSelectedLanguageId] = useState<LanguageId>(
+    initialUserOptions?.selectedLanguageId ?? 'sv',
+  )
+  const [availableStart, setAvailableStart] = useState(
+    initialUserOptions?.availableStart ?? defaultAvailableStart,
+  )
+  const [availableEnd, setAvailableEnd] = useState(
+    initialUserOptions?.availableEnd ?? defaultAvailableEnd,
+  )
+  const [visibleStart, setVisibleStart] = useState(
+    initialUserOptions?.visibleStart ?? defaultAvailableStart,
+  )
+  const [visibleEnd, setVisibleEnd] = useState(
+    initialUserOptions?.visibleEnd ?? defaultAvailableEnd,
+  )
   const [plotSize, setPlotSize] = useState(720)
-  const [showEqualityLine, setShowEqualityLine] = useState(false)
+  const [showEqualityLine, setShowEqualityLine] = useState(
+    initialUserOptions?.showEqualityLine ?? false,
+  )
   const selectedLanguage = numberLanguageById[selectedLanguageId]
 
   const chartData = useMemo(
@@ -213,6 +302,35 @@ function App() {
     setVisibleStart(nextStart)
     setVisibleEnd(nextEnd)
   }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    try {
+      window.localStorage.setItem(
+        userOptionsStorageKey,
+        JSON.stringify({
+          selectedLanguageId,
+          availableStart,
+          availableEnd,
+          visibleStart,
+          visibleEnd,
+          showEqualityLine,
+        } satisfies StoredUserOptions),
+      )
+    } catch {
+      // Ignore storage write failures so the app stays usable in restricted contexts.
+    }
+  }, [
+    availableEnd,
+    availableStart,
+    selectedLanguageId,
+    showEqualityLine,
+    visibleEnd,
+    visibleStart,
+  ])
 
   useEffect(() => {
     if (!basePlotRef.current) {
