@@ -8,6 +8,7 @@ import {
   getSortableNumberName,
   numberLanguageById,
   numberLanguages,
+  resolveLanguageId,
   type LanguageId,
 } from "./numberLanguages";
 
@@ -44,10 +45,18 @@ const minAvailableStart = 0;
 const maxAvailableValue = 5000;
 const defaultAvailableStart = 0;
 const defaultAvailableEnd = 100;
+const defaultLanguageId = resolveLanguageId("sv-SE") ?? numberLanguages[0].id;
 const userOptionsStorageKey = "alphabetical-numbers:user-options";
 const compactPointMinSize = 1;
 const compactPointMaxSize = 4.8;
 const defaultAvailableCount = defaultAvailableEnd - defaultAvailableStart + 1;
+const legacyLanguageIds: Record<string, LanguageId> = {
+  de: "de-DE",
+  en: "en-US",
+  es: "es-ES",
+  fr: "fr-FR",
+  sv: "sv-SE",
+};
 
 type StoredUserOptions = {
   selectedLanguageId: LanguageId;
@@ -67,6 +76,26 @@ function clamp(value: number, min: number, max: number): number {
 
 function isLanguageId(value: unknown): value is LanguageId {
   return typeof value === "string" && Object.hasOwn(numberLanguageById, value);
+}
+
+function getStoredLanguageId(value: unknown): LanguageId {
+  if (isLanguageId(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const resolvedLanguageId = resolveLanguageId(value);
+
+    if (resolvedLanguageId) {
+      return resolvedLanguageId;
+    }
+  }
+
+  if (typeof value === "string" && Object.hasOwn(legacyLanguageIds, value)) {
+    return resolveLanguageId(legacyLanguageIds[value]) ?? defaultLanguageId;
+  }
+
+  return defaultLanguageId;
 }
 
 function isPointDisplayMode(value: unknown): value is PointDisplayMode {
@@ -119,9 +148,7 @@ function getStoredUserOptions(): StoredUserOptions | null {
     }
 
     const parsedOptions = parsedValue as Record<string, unknown>;
-    const selectedLanguageId = isLanguageId(parsedOptions.selectedLanguageId)
-      ? parsedOptions.selectedLanguageId
-      : "sv";
+    const selectedLanguageId = getStoredLanguageId(parsedOptions.selectedLanguageId);
     const availableStart = clamp(
       getStoredNumber(parsedOptions.availableStart, defaultAvailableStart),
       minAvailableStart,
@@ -303,7 +330,7 @@ function App() {
   const overlayPlotRef = useRef<HTMLDivElement | null>(null);
   const initialUserOptions = useMemo(() => getStoredUserOptions(), []);
   const [selectedLanguageId, setSelectedLanguageId] = useState<LanguageId>(
-    initialUserOptions?.selectedLanguageId ?? "sv",
+    initialUserOptions?.selectedLanguageId ?? defaultLanguageId,
   );
   const [availableStart, setAvailableStart] = useState(
     initialUserOptions?.availableStart ?? defaultAvailableStart,
