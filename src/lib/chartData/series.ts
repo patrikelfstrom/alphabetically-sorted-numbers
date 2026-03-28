@@ -24,19 +24,8 @@ type RawNumberEntry = {
   value: number;
 };
 
-const languageColorPalette = [
-  "#67e8f9",
-  "#fbbf24",
-  "#fb7185",
-  "#86efac",
-  "#a78bfa",
-  "#fdba74",
-  "#7dd3fc",
-  "#f9a8d4",
-];
-const languagePaletteIndexById = new Map(
-  numberLanguages.map((language, index) => [language.id, index] as const),
-);
+const LANGUAGE_COLOR_LIGHTNESS = 0.8651;
+const LANGUAGE_COLOR_CHROMA = 0.16;
 
 function getTickStep(maxValue: number): number {
   const roughStep = Math.max(1, Math.ceil(maxValue / 10));
@@ -57,10 +46,24 @@ function getTickStep(maxValue: number): number {
   return magnitude * 10;
 }
 
-function getLanguageColor(languageId: LanguageId): string {
-  const paletteIndex = languagePaletteIndexById.get(languageId) ?? 0;
+function getDistributedHue(selectionIndex: number): number {
+  let index = selectionIndex;
+  let denominator = 2;
+  let fraction = 0;
 
-  return languageColorPalette[paletteIndex % languageColorPalette.length];
+  while (index > 0) {
+    fraction += (index % 2) / denominator;
+    index = Math.floor(index / 2);
+    denominator *= 2;
+  }
+
+  return Number((fraction * 360).toFixed(2));
+}
+
+function getLanguageColor(selectionIndex: number): string {
+  const hue = getDistributedHue(selectionIndex);
+
+  return `oklch(${LANGUAGE_COLOR_LIGHTNESS} ${LANGUAGE_COLOR_CHROMA} ${hue})`;
 }
 
 export function buildChartData(availableRange: NumberRange): ChartData {
@@ -129,9 +132,9 @@ export function buildLanguageSeries(
   availableRange: NumberRange,
   selectedLanguageIds: LanguageId[],
 ): LanguageSeries[] {
-  return selectedLanguageIds.map((languageId) => ({
+  return selectedLanguageIds.map((languageId, index) => ({
     chartData: buildLanguageChartData(availableRange, languageId),
-    color: getLanguageColor(languageId),
+    color: getLanguageColor(index),
     languageId,
     languageLabel: numberLanguageById[languageId].label,
   }));

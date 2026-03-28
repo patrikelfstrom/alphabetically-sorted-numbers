@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveLanguageId } from "../../numberLanguages";
+import { numberLanguages, resolveLanguageId } from "../../numberLanguages";
 import type { LanguageSeries } from "./types";
 import {
   buildChartData,
@@ -161,32 +161,45 @@ describe("buildLanguageSeries", () => {
     ]);
   });
 
-  it("assigns the same color to a language regardless of selection order", () => {
-    const afrikaansId = resolveLanguageId("af-ZA") ?? "af-ZA";
-    const albanianId = resolveLanguageId("sq-AL") ?? "sq-AL";
+  it("spreads hues across the color wheel by selection order", () => {
+    const selectedLanguageIds = numberLanguages
+      .slice(0, 8)
+      .map((language) => language.id);
 
-    const firstSeries = buildLanguageSeries(
+    const languageSeries = buildLanguageSeries(
       {
         start: 0,
         end: 5,
       },
-      [afrikaansId, albanianId],
+      selectedLanguageIds,
     );
-    const secondSeries = buildLanguageSeries(
+
+    expect(languageSeries.map((series) => series.color)).toEqual([
+      "oklch(0.8651 0.1153 0)",
+      "oklch(0.8651 0.1153 180)",
+      "oklch(0.8651 0.1153 90)",
+      "oklch(0.8651 0.1153 270)",
+      "oklch(0.8651 0.1153 45)",
+      "oklch(0.8651 0.1153 225)",
+      "oklch(0.8651 0.1153 135)",
+      "oklch(0.8651 0.1153 315)",
+    ]);
+  });
+
+  it("avoids repeating colors across the first dozen languages", () => {
+    const selectedLanguageIds = numberLanguages
+      .slice(0, 12)
+      .map((language) => language.id);
+
+    const languageSeries = buildLanguageSeries(
       {
         start: 0,
         end: 5,
       },
-      [albanianId, afrikaansId],
+      selectedLanguageIds,
     );
-    const firstColorById = new Map(
-      firstSeries.map((series) => [series.languageId, series.color] as const),
-    );
-    const secondColorById = new Map(
-      secondSeries.map((series) => [series.languageId, series.color] as const),
-    );
+    const colors = languageSeries.map((series) => series.color);
 
-    expect(firstColorById.get(afrikaansId)).toBe(secondColorById.get(afrikaansId));
-    expect(firstColorById.get(albanianId)).toBe(secondColorById.get(albanianId));
+    expect(new Set(colors).size).toBe(colors.length);
   });
 });
