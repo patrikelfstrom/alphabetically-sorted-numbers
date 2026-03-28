@@ -240,7 +240,11 @@
   --segmented-control-gap: 0.22rem;
   --segmented-control-padding: 0.22rem;
   --segmented-control-pill-width: calc(
-    (100% - (2 * var(--segmented-control-padding)) - (2 * var(--segmented-control-gap))) / 3
+    (
+        100% - (2 * var(--segmented-control-padding)) -
+          (2 * var(--segmented-control-gap))
+      ) /
+      3
   );
   position: relative;
   display: inline-grid;
@@ -370,7 +374,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.38rem;
-  margin-top: 0.08rem;
   align-items: flex-start;
 }
 

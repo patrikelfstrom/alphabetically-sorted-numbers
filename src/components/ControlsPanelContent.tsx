@@ -480,7 +480,6 @@ export function ControlsPanelContent({
                           : {
                               opacity: 0,
                               scale: 0.92,
-                              y: -6,
                             }
                       }
                       initial={
@@ -489,7 +488,6 @@ export function ControlsPanelContent({
                           : {
                               opacity: 0,
                               scale: 0.92,
-                              y: -6,
                             }
                       }
                       key={series.languageId}

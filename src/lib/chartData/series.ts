@@ -4,6 +4,7 @@ import {
   getLanguageCollator,
   getNumberName,
   getSortableNumberName,
+  numberLanguages,
   numberLanguageById,
   type LanguageId,
 } from "../../numberLanguages";
@@ -33,6 +34,9 @@ const languageColorPalette = [
   "#7dd3fc",
   "#f9a8d4",
 ];
+const languagePaletteIndexById = new Map(
+  numberLanguages.map((language, index) => [language.id, index] as const),
+);
 
 function getTickStep(maxValue: number): number {
   const roughStep = Math.max(1, Math.ceil(maxValue / 10));
@@ -53,8 +57,10 @@ function getTickStep(maxValue: number): number {
   return magnitude * 10;
 }
 
-function getLanguageColor(index: number): string {
-  return languageColorPalette[index % languageColorPalette.length];
+function getLanguageColor(languageId: LanguageId): string {
+  const paletteIndex = languagePaletteIndexById.get(languageId) ?? 0;
+
+  return languageColorPalette[paletteIndex % languageColorPalette.length];
 }
 
 export function buildChartData(availableRange: NumberRange): ChartData {
@@ -123,9 +129,9 @@ export function buildLanguageSeries(
   availableRange: NumberRange,
   selectedLanguageIds: LanguageId[],
 ): LanguageSeries[] {
-  return selectedLanguageIds.map((languageId, index) => ({
+  return selectedLanguageIds.map((languageId) => ({
     chartData: buildLanguageChartData(availableRange, languageId),
-    color: getLanguageColor(index),
+    color: getLanguageColor(languageId),
     languageId,
     languageLabel: numberLanguageById[languageId].label,
   }));

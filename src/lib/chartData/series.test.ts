@@ -139,3 +139,54 @@ describe("selectVisibleLanguageSeries", () => {
     );
   });
 });
+
+describe("buildLanguageSeries", () => {
+  it("preserves the selected language order", () => {
+    const afrikaansId = resolveLanguageId("af-ZA") ?? "af-ZA";
+    const albanianId = resolveLanguageId("sq-AL") ?? "sq-AL";
+    const amharicId = resolveLanguageId("am-ET") ?? "am-ET";
+
+    const languageSeries = buildLanguageSeries(
+      {
+        start: 0,
+        end: 5,
+      },
+      [afrikaansId, amharicId, albanianId],
+    );
+
+    expect(languageSeries.map((series) => series.languageLabel)).toEqual([
+      "Afrikaans",
+      "Amharic",
+      "Albanian",
+    ]);
+  });
+
+  it("assigns the same color to a language regardless of selection order", () => {
+    const afrikaansId = resolveLanguageId("af-ZA") ?? "af-ZA";
+    const albanianId = resolveLanguageId("sq-AL") ?? "sq-AL";
+
+    const firstSeries = buildLanguageSeries(
+      {
+        start: 0,
+        end: 5,
+      },
+      [afrikaansId, albanianId],
+    );
+    const secondSeries = buildLanguageSeries(
+      {
+        start: 0,
+        end: 5,
+      },
+      [albanianId, afrikaansId],
+    );
+    const firstColorById = new Map(
+      firstSeries.map((series) => [series.languageId, series.color] as const),
+    );
+    const secondColorById = new Map(
+      secondSeries.map((series) => [series.languageId, series.color] as const),
+    );
+
+    expect(firstColorById.get(afrikaansId)).toBe(secondColorById.get(afrikaansId));
+    expect(firstColorById.get(albanianId)).toBe(secondColorById.get(albanianId));
+  });
+});
