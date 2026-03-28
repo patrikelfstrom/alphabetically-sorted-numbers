@@ -102,4 +102,13 @@ describe("appOptionsReducer", () => {
 
     expect(nextState.hiddenLanguageIds).toEqual([]);
   });
+
+  it("updates the range slider visibility preference", () => {
+    const nextState = appOptionsReducer(defaultAppOptions, {
+      type: "setShowRangeSliders",
+      showRangeSliders: false,
+    });
+
+    expect(nextState.showRangeSliders).toBe(false);
+  });
 });

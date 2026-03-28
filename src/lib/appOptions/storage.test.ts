@@ -52,6 +52,7 @@ describe("loadStoredAppOptions", () => {
       },
       pointDisplayMode: "auto",
       showEqualityLine: true,
+      showRangeSliders: true,
     });
   });
 
@@ -102,5 +103,15 @@ describe("loadStoredAppOptions", () => {
     expect(loadStoredAppOptions(storage).hiddenLanguageIds).toEqual([
       resolveLanguageId("en-US"),
     ]);
+  });
+
+  it("respects a stored preference to hide the range sliders", () => {
+    const storage = createStorage(
+      JSON.stringify({
+        showRangeSliders: false,
+      }),
+    );
+
+    expect(loadStoredAppOptions(storage).showRangeSliders).toBe(false);
   });
 });

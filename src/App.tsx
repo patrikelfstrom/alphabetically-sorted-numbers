@@ -14,13 +14,12 @@ import {
 function App() {
   const appShellRef = useRef<HTMLElement | null>(null);
   const plotStageRef = useRef<HTMLDivElement | null>(null);
-  const { plotRangeRef, plotSize } = usePlotSize();
-  const [controlsMinimized, setControlsMinimized] = useState(false);
   const {
     options,
     setPointDisplayMode,
     setSelectedLanguageIds,
     setShowEqualityLine,
+    setShowRangeSliders,
     toggleHiddenLanguageId,
     setVisibleRankRangeEnd,
     setVisibleRankRangeStart,
@@ -28,6 +27,8 @@ function App() {
     setVisibleValueRangeStart,
     updateAvailableRange,
   } = useAppPreferences();
+  const { plotRangeRef, plotSize } = usePlotSize(options.showRangeSliders);
+  const [controlsMinimized, setControlsMinimized] = useState(false);
   const deferredVisibleValueStart = useDeferredValue(
     options.visibleValueRange.start,
   );
@@ -95,6 +96,8 @@ function App() {
           setControlsMinimized={setControlsMinimized}
           setPointDisplayMode={setPointDisplayMode}
           setSelectedLanguageIds={setSelectedLanguageIds}
+          setShowEqualityLine={setShowEqualityLine}
+          setShowRangeSliders={setShowRangeSliders}
           toggleHiddenLanguageId={toggleHiddenLanguageId}
           updateAvailableRange={updateAvailableRange}
         />
@@ -105,7 +108,6 @@ function App() {
           options={options}
           plotRangeRef={plotRangeRef}
           plotSize={plotSize}
-          setShowEqualityLine={setShowEqualityLine}
           setVisibleRankRangeEnd={setVisibleRankRangeEnd}
           setVisibleRankRangeStart={setVisibleRankRangeStart}
           setVisibleValueRangeEnd={setVisibleValueRangeEnd}

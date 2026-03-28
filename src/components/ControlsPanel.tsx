@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { type RefObject, useId } from "react";
+import { type RefObject, useEffect, useId, useRef } from "react";
 import type { AppOptions, NumberRange, PointDisplayMode } from "../app/types";
 import type { LanguageSeries } from "../lib/chartData";
 import "./ControlsPanel.css";
@@ -25,6 +25,8 @@ type ControlsPanelProps = {
   setControlsMinimized: (controlsMinimized: boolean) => void;
   setPointDisplayMode: (pointDisplayMode: PointDisplayMode) => void;
   setSelectedLanguageIds: (selectedLanguageIds: LanguageId[]) => void;
+  setShowEqualityLine: (showEqualityLine: boolean) => void;
+  setShowRangeSliders: (showRangeSliders: boolean) => void;
   toggleHiddenLanguageId: (languageId: LanguageId) => void;
   updateAvailableRange: (availableRange: NumberRange) => void;
 };
@@ -40,10 +42,14 @@ export function ControlsPanel({
   setControlsMinimized,
   setPointDisplayMode,
   setSelectedLanguageIds,
+  setShowEqualityLine,
+  setShowRangeSliders,
   toggleHiddenLanguageId,
   updateAvailableRange,
 }: ControlsPanelProps) {
   const controlsBodyId = useId();
+  const floatingPanelRef = useRef<HTMLElement | null>(null);
+  const floatingToggleRef = useRef<HTMLButtonElement | null>(null);
   const {
     dragControls,
     floatingStyles,
@@ -62,6 +68,49 @@ export function ControlsPanel({
     dragBoundsRef,
     plotSize,
   });
+
+  useEffect(() => {
+    if (controlsMinimized) {
+      return;
+    }
+
+    function handleDocumentPointerDown(event: PointerEvent) {
+      const target = event.target;
+
+      if (!(target instanceof Node)) {
+        return;
+      }
+
+      const eventPath = event.composedPath();
+      const clickedInsidePanel =
+        (floatingPanelRef.current !== null &&
+          eventPath.includes(floatingPanelRef.current)) ||
+        floatingPanelRef.current?.contains(target);
+      const clickedToggle =
+        (floatingToggleRef.current !== null &&
+          eventPath.includes(floatingToggleRef.current)) ||
+        floatingToggleRef.current?.contains(target);
+
+      if (clickedInsidePanel || clickedToggle) {
+        return;
+      }
+
+      if (
+        target instanceof Element &&
+        target.closest("[data-controls-panel-interactive-root='true']")
+      ) {
+        return;
+      }
+
+      setControlsMinimized(true);
+    }
+
+    document.addEventListener("pointerdown", handleDocumentPointerDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handleDocumentPointerDown);
+    };
+  }, [controlsMinimized, setControlsMinimized]);
 
   return (
     <>
@@ -102,7 +151,10 @@ export function ControlsPanel({
             setControlsMinimized(!controlsMinimized);
           }}
           onPointerDown={handleButtonPointerDown}
-          ref={setReference}
+          ref={(node) => {
+            floatingToggleRef.current = node;
+            setReference(node);
+          }}
           type="button"
         >
           {controlsMinimized ? "Show controls" : "Hide controls"}
@@ -112,7 +164,10 @@ export function ControlsPanel({
       {controlsMinimized ? null : (
         <ControlsPanelContent
           controlsBodyId={controlsBodyId}
-          floatingRef={setFloating}
+          floatingRef={(node) => {
+            floatingPanelRef.current = node;
+            setFloating(node);
+          }}
           floatingStyle={floatingStyles}
           languageSeries={languageSeries}
           options={options}
@@ -120,6 +175,8 @@ export function ControlsPanel({
           selectedLanguageColorById={selectedLanguageColorById}
           setPointDisplayMode={setPointDisplayMode}
           setSelectedLanguageIds={setSelectedLanguageIds}
+          setShowEqualityLine={setShowEqualityLine}
+          setShowRangeSliders={setShowRangeSliders}
           toggleHiddenLanguageId={toggleHiddenLanguageId}
           updateAvailableRange={updateAvailableRange}
         />

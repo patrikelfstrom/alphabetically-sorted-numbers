@@ -44,6 +44,12 @@ export function useAppPreferences() {
         showEqualityLine,
       });
     },
+    setShowRangeSliders(showRangeSliders: boolean) {
+      dispatch({
+        type: "setShowRangeSliders",
+        showRangeSliders,
+      });
+    },
     updateAvailableRange(availableRange: NumberRange) {
       dispatch({
         type: "updateAvailableRange",

@@ -65,6 +65,7 @@ export function getDefaultAppOptions(): AppOptions {
     },
     pointDisplayMode: "auto",
     showEqualityLine: false,
+    showRangeSliders: true,
   };
 }
 

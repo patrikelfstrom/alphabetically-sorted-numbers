@@ -106,6 +106,7 @@ export function MultiSelectCombobox({
           <Popover.Content
             align="start"
             className="multi-combobox__content"
+            data-controls-panel-interactive-root="true"
             sideOffset={8}
           >
             <Command className="multi-combobox__command">

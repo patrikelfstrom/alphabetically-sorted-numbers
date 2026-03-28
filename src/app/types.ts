@@ -15,4 +15,5 @@ export type AppOptions = {
   visibleRankRange: NumberRange;
   pointDisplayMode: PointDisplayMode;
   showEqualityLine: boolean;
+  showRangeSliders: boolean;
 };

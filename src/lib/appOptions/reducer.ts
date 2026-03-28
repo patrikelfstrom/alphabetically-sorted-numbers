@@ -29,6 +29,10 @@ export type AppOptionsAction =
       showEqualityLine: boolean;
     }
   | {
+      type: "setShowRangeSliders";
+      showRangeSliders: boolean;
+    }
+  | {
       type: "updateAvailableRange";
       availableRange: NumberRange;
     }
@@ -96,6 +100,12 @@ export function appOptionsReducer(
       return {
         ...state,
         showEqualityLine: action.showEqualityLine,
+      };
+
+    case "setShowRangeSliders":
+      return {
+        ...state,
+        showRangeSliders: action.showRangeSliders,
       };
 
     case "updateAvailableRange": {

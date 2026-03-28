@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 
 const minimumPlotSize = 280;
 const maximumPlotSize = 1480;
 
 function getResponsivePlotSize(
   plotRangeHeight: number,
+  showRangeSliders: boolean,
   viewportWidth: number,
   viewportHeight: number,
 ): number {
@@ -13,10 +14,12 @@ function getResponsivePlotSize(
   const yRangeWidth = viewportWidth <= 720 ? 66 : 82;
   const plotMatrixGap = viewportWidth <= 720 ? 8 : 12;
   const availableWidth =
-    viewportWidth - outerPadding * 2 - yRangeWidth - plotMatrixGap;
+    viewportWidth -
+    outerPadding * 2 -
+    (showRangeSliders ? yRangeWidth + plotMatrixGap : 0);
   const availableHeight =
     viewportHeight -
-    plotRangeHeight -
+    (showRangeSliders ? plotRangeHeight : 0) -
     plotShellChrome -
     outerPadding * 2;
 
@@ -26,16 +29,23 @@ function getResponsivePlotSize(
   );
 }
 
-export function usePlotSize() {
-  const plotRangeRef = useRef<HTMLDivElement | null>(null);
+export function usePlotSize(showRangeSliders: boolean) {
+  const [plotRangeElement, setPlotRangeElement] = useState<HTMLDivElement | null>(
+    null,
+  );
   const [plotSize, setPlotSize] = useState(720);
 
-  useEffect(() => {
+  const plotRangeRef = useCallback((node: HTMLDivElement | null) => {
+    setPlotRangeElement(node);
+  }, []);
+
+  useLayoutEffect(() => {
     const updatePlotSize = () => {
       const plotRangeHeight =
-        plotRangeRef.current?.getBoundingClientRect().height ?? 0;
+        plotRangeElement?.getBoundingClientRect().height ?? 0;
       const nextPlotSize = getResponsivePlotSize(
         plotRangeHeight,
+        showRangeSliders,
         window.innerWidth,
         window.innerHeight,
       );
@@ -53,8 +63,8 @@ export function usePlotSize() {
       updatePlotSize();
     });
 
-    if (plotRangeRef.current) {
-      observer.observe(plotRangeRef.current);
+    if (plotRangeElement) {
+      observer.observe(plotRangeElement);
     }
 
     window.addEventListener("resize", updatePlotSize);
@@ -63,7 +73,7 @@ export function usePlotSize() {
       observer.disconnect();
       window.removeEventListener("resize", updatePlotSize);
     };
-  }, []);
+  }, [plotRangeElement, showRangeSliders]);
 
   return {
     plotRangeRef,

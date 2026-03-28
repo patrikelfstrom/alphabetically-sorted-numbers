@@ -100,95 +100,6 @@
   transform: rotate(180deg);
 }
 
-.toggle-switch {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  padding: 0.2rem 0;
-  cursor: pointer;
-}
-
-.toggle-switch__input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.toggle-switch__control {
-  position: relative;
-  flex: 0 0 auto;
-  width: 2.8rem;
-  height: 1.6rem;
-  border-radius: 999px;
-  border: 1px solid rgba(210, 219, 255, 0.12);
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 1px 2px rgba(5, 6, 10, 0.45);
-  transition:
-    background 140ms ease,
-    border-color 140ms ease;
-}
-
-.toggle-switch__thumb {
-  position: absolute;
-  top: 0.14rem;
-  left: 0.14rem;
-  width: 1.04rem;
-  height: 1.04rem;
-  border-radius: 50%;
-  background: #f6f8ff;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28);
-  transition: transform 140ms ease;
-}
-
-.toggle-switch__copy {
-  display: grid;
-  gap: 0.08rem;
-  min-width: 0;
-}
-
-.toggle-switch__copy strong {
-  font-size: 0.84rem;
-  font-weight: 600;
-  color: #eef2ff;
-}
-
-.toggle-switch--plot {
-  flex-direction: column;
-  align-items: center;
-  align-self: end;
-  justify-self: start;
-  gap: 0.32rem;
-  padding: 0;
-}
-
-.toggle-switch--plot .toggle-switch__copy {
-  gap: 0;
-  justify-items: center;
-  text-align: center;
-}
-
-.toggle-switch--plot .toggle-switch__copy strong {
-  font-size: 0.78rem;
-}
-
-.toggle-switch__input:checked + .toggle-switch__control {
-  border-color: rgba(255, 210, 122, 0.38);
-  background: linear-gradient(
-    90deg,
-    rgba(255, 210, 122, 0.3),
-    rgba(156, 141, 255, 0.42)
-  );
-}
-
-.toggle-switch__input:checked + .toggle-switch__control .toggle-switch__thumb {
-  transform: translateX(1.18rem);
-}
-
-.toggle-switch__input:focus-visible + .toggle-switch__control {
-  outline: 2px solid rgba(255, 210, 122, 0.65);
-  outline-offset: 2px;
-}
-
 .plot-shell {
   display: grid;
   justify-items: center;
@@ -222,9 +133,30 @@
 .plot-matrix {
   display: grid;
   grid-template-columns: auto auto;
+  grid-template-areas:
+    "y plot"
+    ". x";
   column-gap: 0.75rem;
   row-gap: 0.7rem;
   align-items: start;
+}
+
+.plot-matrix--without-sliders {
+  grid-template-columns: auto;
+  grid-template-areas: "plot";
+  justify-items: center;
+}
+
+.plot-y-range-shell {
+  grid-area: y;
+}
+
+.plot-frame {
+  grid-area: plot;
+}
+
+.plot-range-row {
+  grid-area: x;
 }
 
 .plot-y-range__rail {
@@ -326,17 +258,15 @@
 }
 
 @media (max-width: 720px) {
-  .toggle-switch--plot {
-    justify-self: stretch;
-    justify-content: flex-start;
-  }
-
   .plot-shell {
     padding: 0.4rem 0.4rem 0.3rem;
     border-radius: 18px;
   }
 
   .plot-matrix {
+    grid-template-areas:
+      "y plot"
+      ". x";
     column-gap: 0.5rem;
     row-gap: 0.55rem;
   }

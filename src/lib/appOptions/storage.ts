@@ -22,6 +22,7 @@ type StoredUserOptions = {
   visibleRankEnd?: unknown;
   pointDisplayMode?: unknown;
   showEqualityLine?: unknown;
+  showRangeSliders?: unknown;
 };
 
 function normalizeStoredLanguageId(value: unknown): LanguageId | null {
@@ -150,6 +151,7 @@ export function loadStoredAppOptions(
         ? parsedOptions.pointDisplayMode
         : "auto",
       showEqualityLine: parsedOptions.showEqualityLine === true,
+      showRangeSliders: parsedOptions.showRangeSliders !== false,
     };
   } catch {
     return getDefaultAppOptions();
@@ -168,6 +170,7 @@ export function serializeAppOptions(options: AppOptions): StoredUserOptions {
     visibleRankEnd: options.visibleRankRange.end,
     pointDisplayMode: options.pointDisplayMode,
     showEqualityLine: options.showEqualityLine,
+    showRangeSliders: options.showRangeSliders,
   };
 }
 
