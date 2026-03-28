@@ -1,4 +1,4 @@
-# Numbers Sorted Alphabetical
+# Alphabetically Sorted Numbers
 
 This app plots numbers by the alphabetical order of their written names instead of their numeric value.
 
