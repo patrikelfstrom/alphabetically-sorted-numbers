@@ -48,5 +48,5 @@ export function getToggleAllValues({
     return [];
   }
 
-  return currentValues.slice(0, minSelected);
+  return optionValues.slice(0, minSelected);
 }

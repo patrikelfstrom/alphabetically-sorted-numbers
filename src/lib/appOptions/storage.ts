@@ -4,7 +4,6 @@ import { clampNumber, getRangeCount } from "../rangeUtils";
 import {
   defaultAvailableRange,
   ensureHiddenLanguageIds,
-  ensureSelectedLanguageIds,
   getDefaultAppOptions,
   normalizeAvailableRange,
   userOptionsStorageKey,
@@ -47,6 +46,18 @@ function getStoredLanguageIds(value: unknown): LanguageId[] {
   );
 }
 
+function getStoredSelectedLanguageIds(value: unknown): LanguageId[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const selectedLanguageIds = getStoredLanguageIds(value);
+
+  return selectedLanguageIds.length > 0 || value.length === 0
+    ? selectedLanguageIds
+    : null;
+}
+
 function getStoredNumber(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value)
     ? Math.trunc(value)
@@ -86,14 +97,9 @@ export function loadStoredAppOptions(
     }
 
     const parsedOptions = parsedValue as StoredUserOptions;
-    const hasStoredSelectedLanguageIds = Array.isArray(
-      parsedOptions.selectedLanguageIds,
-    );
-    const selectedLanguageIds = hasStoredSelectedLanguageIds
-      ? ensureSelectedLanguageIds(
-          getStoredLanguageIds(parsedOptions.selectedLanguageIds),
-        )
-      : getDefaultAppOptions().selectedLanguageIds;
+    const selectedLanguageIds =
+      getStoredSelectedLanguageIds(parsedOptions.selectedLanguageIds) ??
+      getDefaultAppOptions().selectedLanguageIds;
     const hiddenLanguageIds = ensureHiddenLanguageIds(
       getStoredLanguageIds(parsedOptions.hiddenLanguageIds),
       selectedLanguageIds,

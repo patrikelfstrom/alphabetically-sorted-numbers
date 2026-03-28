@@ -79,6 +79,18 @@ describe("loadStoredAppOptions", () => {
     expect(loadStoredAppOptions(storage).hiddenLanguageIds).toEqual([]);
   });
 
+  it("falls back to the default selection when stored language ids are invalid", () => {
+    const storage = createStorage(
+      JSON.stringify({
+        selectedLanguageIds: ["missing-language"],
+      }),
+    );
+
+    expect(loadStoredAppOptions(storage).selectedLanguageIds).toEqual([
+      resolveLanguageId("sv-SE"),
+    ]);
+  });
+
   it("keeps hidden languages only when they are still selected", () => {
     const storage = createStorage(
       JSON.stringify({

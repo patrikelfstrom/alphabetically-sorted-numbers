@@ -50,4 +50,14 @@ describe("multiSelectComboboxState", () => {
       }),
     ).toEqual(["sv"]);
   });
+
+  it("keeps the minimum selection anchored to available options when clearing all", () => {
+    expect(
+      getToggleAllValues({
+        currentValues: ["missing", "fr", "en", "sv"],
+        minSelected: 2,
+        optionValues: ["sv", "en", "fr"],
+      }),
+    ).toEqual(["sv", "en"]);
+  });
 });
